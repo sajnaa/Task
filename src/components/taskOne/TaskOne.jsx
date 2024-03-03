@@ -44,7 +44,6 @@ const TaskOne = () => {
   const [data,setData]=useState([])
   const [drawing, setDrawing] = useState(false);
   const handleRadioChange = (field, value) => {
-    console.log(value)
     dispatch(setFieldValue({ field, value }));
   };
   const handleCheckboxChange = (field,value) => {
@@ -106,22 +105,23 @@ const TaskOne = () => {
 
     if (listType === 'A') {
       setStartPos({ x, y, drawing: true });
+      setDrawing(true);
       setData([...data, { from: item, to: null }]);
-    } else if (listType === 'B' && startPos.drawing) {
+    } else if (listType === 'B' && startPos.drawing && drawing) {
       const rect = canvasRef.current.getBoundingClientRect();
       const endX = x - rect.left;
       const endY = y - rect.top;
       const randomColor = getRandomColor();
       setLines([...lines, { startX: startPos.x, startY: startPos.y, endX, endY, color: randomColor}]);
       setStartPos({ x: 0, y: 0, drawing: false });
+      setDrawing(false);
       const lastIndex = data.findIndex(line => line.to === null);
     
       if (lastIndex !== -1) {
          
         data[lastIndex] = { ...data[lastIndex], to: item };
-     
+        setDrawing(false);
       }
-      console.log(data)
     
     }
   };
@@ -140,14 +140,60 @@ const TaskOne = () => {
       ctx.stroke();
     });
   }, [lines]);
-  
+    
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+
+    const handleMouseMove = (e) => {
+      if (drawing) {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        lines.forEach(({ startX, startY, endX, endY, color }) => {
+          ctx.beginPath();
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(endX, endY);
+          ctx.strokeStyle = color;
+          ctx.stroke();
+        });
+
+        ctx.beginPath();
+        ctx.moveTo(startPos.x, startPos.y);
+        ctx.lineTo(x, y);
+        ctx.strokeStyle = '#000'; 
+        ctx.stroke();
+      }
+    };
+
+    const handleMouseUp = (e) => {
+
+      if (drawing) {
+        const rect = canvas.getBoundingClientRect();
+        const endX = e.clientX - rect.left;
+        const endY = e.clientY - rect.top;
+        setLines([...lines, { startX: startPos.x, startY: startPos.y, endX, endY, color: getRandomColor() }]);
+        setDrawing(false);
+      }
+    };
+
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      canvas.removeEventListener('mousemove', handleMouseMove);
+      canvas.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [drawing, lines, startPos]);
   const getRandomColor = () => {
     const colors = options.handleColor;
     return colors[Math.floor(Math.random() * colors.length)];
   };
   const[toggle,setToggle]=useState(false)
   const handleResult=()=>{
-    console.log(data)
 
 setToggle(true)
   }
